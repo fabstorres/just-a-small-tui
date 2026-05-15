@@ -1,74 +1,62 @@
-var textInput = new JustASmallTui.TextInput();
-while (true)
+using System.Text;
+using JustASmallTui.Tui;
+
+Console.CancelKeyPress += (_, _) => Terminal.Restore();
+
+Terminal.EnableRawMode();
+// Console.Write("\u001b[>9u");
+Console.Write("\u001b[<u");
+Console.Write("Press keys to inspect input. Press q or Ctrl-C to quit.\r\n");
+
+var stdin = Console.OpenStandardInput();
+var buffer = new byte[64];
+
+try
 {
-    var key = Console.ReadKey(intercept: true);
-    if (key.Key == ConsoleKey.C && key.Modifiers == ConsoleModifiers.Control)
+    while (true)
     {
-        break;
-    }
-    textInput.HandleInput(key);
-    Console.Clear();
-    foreach (var line in textInput.Render(Console.WindowWidth))
-    {
-        Console.WriteLine(line);
+        var n = await stdin.ReadAsync(buffer);
+        if (n > 0)
+        {
+            var input = Encoding.UTF8.GetString(buffer, 0, n);
+            Console.Write($"hex={Convert.ToHexString(buffer.AsSpan(0, n))} text={EscapeForDisplay(input)}\r\n");
+
+            if (ShouldQuit(input))
+            {
+                break;
+            }
+        }
+
     }
 }
-
-namespace JustASmallTui
+finally
 {
-    public interface IComponent
-    {
-        bool Focused { get; set; }
-        string[] Render(int width);
-        void HandleInput(ConsoleKeyInfo keyInfo);
-        bool WantsKeyRelease { get; }
-        void Invalidate();
-    }
-
-    public class TextInput : IComponent
-    {
-        private string[] lines = [""];
-
-        public string[] Render(int width)
-        {
-            return lines;
-        }
-
-        public void Invalidate()
-        {
-
-        }
-
-        public bool Focused { get; set; }
-
-        public bool WantsKeyRelease => false;
-
-        public void HandleInput(ConsoleKeyInfo keyInfo)
-        {
-            //TODO: ConsoleKeyInfo is unreliable and may not always reflect the actual key pressed
-            if (keyInfo.Key == ConsoleKey.Enter && keyInfo.Modifiers == ConsoleModifiers.Shift)
-            {
-                lines = [.. lines, ""];
-                Invalidate();
-            }
-            else if (keyInfo.Key == ConsoleKey.Enter)
-            {
-                lines = [""];
-                Invalidate();
-            }
-            else if (keyInfo.Key == ConsoleKey.Backspace)
-            {
-                if (lines[^1].Length > 0)
-                {
-                    lines[^1] = lines[^1][..^1];
-                    Invalidate();
-                }
-            }
-            else
-            {
-                lines[^1] += keyInfo.KeyChar;
-                Invalidate();
-            }
-        }
-    }
+    //Console.Write("\u001b[<u");
+    Terminal.Restore();
 }
+
+static string EscapeForDisplay(string value)
+{
+    var builder = new StringBuilder(value.Length);
+
+    foreach (var c in value)
+    {
+        builder.Append(c switch
+        {
+            '\u001b' => "\\e",
+            '\r' => "\\r",
+            '\n' => "\\n",
+            '\t' => "\\t",
+            < ' ' or '\u007f' => $"\\x{(int)c:X2}",
+            _ => c
+        });
+    }
+
+    return builder.ToString();
+}
+
+static bool ShouldQuit(string input) =>
+    input.Contains('q')
+    || input.Contains('\u0003')
+    || input.Contains("\u001b[113")
+    || input.Contains("\u001b[99;5u");
