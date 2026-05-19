@@ -27,6 +27,11 @@ public static partial class TermiosHandler
     [LibraryImport("libc")]
     private static partial int tcsetattr(int fd, int optional_actions, in Termios termios);
 
+    public static void GetCurrentSettings(out Termios termios)
+    {
+        tcgetattr(0, out termios);
+    }
+
     public static unsafe void EnableRawMode(ref Termios raw)
     {
         tcgetattr(0, out raw);
@@ -37,6 +42,11 @@ public static partial class TermiosHandler
         raw.c_cc[6] = 1;
         raw.c_cc[5] = 0;
         tcsetattr(0, 2, raw);
+    }
+
+    public static void DisableRawMode(ref Termios original)
+    {
+        tcsetattr(0, 2, original);
     }
 
     public static void Flush(ref Termios raw)

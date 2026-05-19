@@ -1,18 +1,13 @@
-// using JustASmallTui.Native;
+using JustASmallTui.Native;
 
-//var termios = new Termios();
-//TermiosHandler.EnableRawMode(ref termios);
+var terminal = new ProcessTerminal();
 
-
-Console.Write("\x1b[?25l");
-
-
-while (true)
+try
 {
-    var key = Console.ReadKey(intercept: true);
-    if (key.Key == ConsoleKey.Q)
-        break;
+    terminal.Start(data => { });
+    while (true) ;
 }
-
-
-Console.Write("\x1b[?25h");
+finally
+{
+    terminal.Stop();
+}
