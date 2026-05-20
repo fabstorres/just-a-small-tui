@@ -9,6 +9,8 @@ public interface ITerminal
     bool IsKittyProtocolActive { get; }
     void Start(Action<string> onInput);
     void Stop();
+    void HideCursor();
+    void ShowCursor();
 }
 
 public sealed class ProcessTerminal : ITerminal
@@ -18,6 +20,7 @@ public sealed class ProcessTerminal : ITerminal
     private Termios _termios;
     private Termios _originalTermios;
     private Action<string>? _onInput;
+    private bool _kittyProtocolActive;
 
     public int Columns
     {
@@ -55,7 +58,7 @@ public sealed class ProcessTerminal : ITerminal
         set => _rows = value;
     }
 
-    public bool IsKittyProtocolActive => false;
+    public bool IsKittyProtocolActive => _kittyProtocolActive;
 
     public void Start(Action<string> onInput)
     {
@@ -64,11 +67,23 @@ public sealed class ProcessTerminal : ITerminal
         TermiosHandler.EnableRawMode(ref _termios);
         Console.InputEncoding = Encoding.UTF8;
         Console.Write("\x1b[?2004h");
+        HideCursor();
     }
 
     public void Stop()
     {
+        ShowCursor();
         Console.Write("\x1b[?2004l");
         TermiosHandler.DisableRawMode(ref _originalTermios);
+    }
+
+    public void HideCursor()
+    {
+        Console.Write("\x1b[?25l");
+    }
+
+    public void ShowCursor()
+    {
+        Console.Write("\x1b[?25h");
     }
 }
